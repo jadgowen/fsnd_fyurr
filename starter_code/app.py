@@ -41,6 +41,12 @@ class Venue(db.Model):
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
     num_upcoming_shows = db.Column(db.Integer)
+    genres = db.Column(db.PickleType)
+    website = db.Column(db.String(500))
+    seeking_talent = db.Column(db.Boolean)
+    seeking_description = db.Column(db.String(1000))
+    show_ids = db.relationship('Shows',backref='artist_list', lazy=True)
+
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
@@ -55,6 +61,17 @@ class Artist(db.Model):
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
     num_upcoming_shows = db.Column(db.Integer)
+    show_ids = db.relationship('Shows',backref='show_list', lazy=True)
+
+
+
+class Shows(db.Model):
+    __tablename__ = 'Shows'
+    id = db.Column(db.Integer, primary_key=True)
+    show_time = db.Column(db.DateTime, nullable=False)
+    venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'), nullable=False)
+    artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'), nullable=False)
+
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
@@ -90,27 +107,35 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_shows should be aggregated based on number of upcoming shows per venue.
-  data=[{
-    "city": "San Francisco",
-    "state": "CA",
-    "venues": [{
-      "id": 1,
-      "name": "The Musical Hop",
-      "num_upcoming_shows": 0,
-    }, {
-      "id": 3,
-      "name": "Park Square Live Music & Coffee",
-      "num_upcoming_shows": 1,
-    }]
-  }, {
-    "city": "New York",
-    "state": "NY",
-    "venues": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
-  }]
+  venues = Venue.query.all() # Venue data from DB
+  current_time = datetime.now() # Define current time to aggregate num_shows value
+  data=[] # Empty dictionary to capture data to pass to template
+  def venSort(ven): # Function to use key in sort
+      return ven[1] # Returns second value in list (State)
+  locations = set() # Using Set to return unique values from query (no duplicates)
+  for loc in venues:
+      locations.add((loc.city,loc.state))
+  locations = list(locations) # Convert from Set to List
+  locations.sort(key=venSort) # Sorts by State instead of City
+  for ven in locations: # Loop to create venue data for each unique location
+      ven_list = [] # Empty dictionary to capture venue data to append to data dictionary
+      for venue in venues: # Building individual library
+          if (venue.city == ven[0]) and (venue.state == ven[1]): # If venue city and state match
+              show_data = Shows.query.filter_by(venue_id=venue.id).all() #
+              num_shows = 0
+              for shows in show_data:
+                  if shows.show_time > now:
+                      num_shows += 1
+              ven_list.append({ # Appending to ven_list dictonary with needed values
+              "id": venue.id,
+              "name": venue.name,
+              "num_upcoming_shows": num_shows
+              })
+      data.append({ # Appending to data dictionary passed to template
+        "city": ven[0],
+        "state": ven[1],
+        "venues": ven_list
+      })
   return render_template('pages/venues.html', areas=data);
 
 @app.route('/venues/search', methods=['POST'])
