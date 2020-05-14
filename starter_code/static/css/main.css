@@ -209,3 +209,13 @@ h2.monospace {
 .subtitle {
   opacity: 0.5;
 }
+.delete-btn {
+  color: #fff;
+  background: #c00;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+}
+.delete-btn:active {
+  background: #600;
+}
